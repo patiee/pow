@@ -3,8 +3,9 @@ syntax = "proto3";
 option go_package = "github.com/patiee/pow/model";
 
 message Transaction {
-	string sender = 1;
-	string receiver = 2;
-	string amount = 3;
-	bytes signature = 4;
+	int64 idx = 1;
+	string sender = 2;
+	string receiver = 3;
+	string amount = 4;
+	bytes signature = 5;
 }
