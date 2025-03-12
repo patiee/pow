@@ -71,10 +71,87 @@ func (kv *KVStorage) Get(key []byte) ([]byte, error) {
 				return nil, err
 			}
 			return value, nil
+		} else {
+			// Skip the value if key doesn’t match
+			_, err = read(file)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return nil, fmt.Errorf("key not found")
+}
+
+// Update a value by key from storage
+func (kv *KVStorage) Update(key, newValue []byte) error {
+	kv.lock.Lock()
+	defer kv.lock.Unlock()
+
+	file, err := os.OpenFile(kv.path, os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	for {
+		storedKey, err := read(file)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		if bytes.Equal(storedKey, key) {
+			valuePosition, err := file.Seek(0, io.SeekCurrent)
+			if err != nil {
+				return err
+			}
+			_, err = read(file)
+			if err != nil {
+				return err
+			}
+
+			remaining, err := io.ReadAll(file)
+			if err != nil {
+				return err
+			}
+
+			// Write new value
+			file.Seek(valuePosition, io.SeekStart)
+			if err := write(file, newValue); err != nil {
+				return err
+			}
+
+			// Write remaining data
+			if _, err := file.Write(remaining); err != nil {
+				return err
+			}
+
+			// Truncate if new value is shorter
+			newEnd := valuePosition + int64(4+len(newValue)) + int64(len(remaining))
+			if err := file.Truncate(newEnd); err != nil {
+				return err
+			}
+
+			return nil
+		} else {
+			// Skip the value if key doesn’t match
+			_, err = read(file)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return fmt.Errorf("key not found")
 }
 
 // write a byte slice with length prefix in binary format
