@@ -8,6 +8,14 @@ import (
 )
 
 func main() {
+
+	mnemonic, _ := model.GenerateMnemonic()
+	fmt.Println("Mnemonic: ", mnemonic)
+	privKey, _ := model.PrivateKeyFromMnemonic(mnemonic)
+	fmt.Println("Priv key: ", privKey.Public(), privKey)
+
+	return
+
 	// Test creating a genesis block
 	previousHash := model.ZeroHash()
 	genesis := model.Block{
