@@ -99,12 +99,21 @@ func (block *Block) Serialize() ([]byte, error) {
 		return nil, fmt.Errorf("failed to write nonce: %v", err)
 	}
 
-	// Transactions
-	for _, tx := range block.Transactions {
+	// Transaction inputs
+	for _, tx := range block.TxIn {
 		txHash := make([]byte, 32)
 		copy(txHash, tx)
 		if err := binary.Write(&buf, binary.LittleEndian, txHash); err != nil {
-			return nil, fmt.Errorf("failed to write transaction hash: %v", err)
+			return nil, fmt.Errorf("failed to write transaction input hash: %v", err)
+		}
+	}
+
+	// Transaction outputs
+	for _, tx := range block.TxOut {
+		txHash := make([]byte, 32)
+		copy(txHash, tx)
+		if err := binary.Write(&buf, binary.LittleEndian, txHash); err != nil {
+			return nil, fmt.Errorf("failed to write transaction output hash: %v", err)
 		}
 	}
 
@@ -165,14 +174,24 @@ func DeserializeBlock(data []byte) (*Block, error) {
 	}
 	block.Nonce = nonce
 
-	// Read Transactions
-	block.Transactions = [][]byte{}
+	// Read Transaction inputs
+	block.TxIn = [][]byte{}
 	for buf.Len() > 0 {
 		txHash := make([]byte, 32)
 		if err := binary.Read(buf, binary.LittleEndian, &txHash); err != nil {
-			return nil, fmt.Errorf("failed to read transaction hash: %v", err)
+			return nil, fmt.Errorf("failed to read transaction input hash: %v", err)
 		}
-		block.Transactions = append(block.Transactions, bytes.Trim(txHash, "\x00"))
+		block.TxIn = append(block.TxIn, bytes.Trim(txHash, "\x00"))
+	}
+
+	// Read Transaction outputs
+	block.TxOut = [][]byte{}
+	for buf.Len() > 0 {
+		txHash := make([]byte, 32)
+		if err := binary.Read(buf, binary.LittleEndian, &txHash); err != nil {
+			return nil, fmt.Errorf("failed to read transaction output hash: %v", err)
+		}
+		block.TxOut = append(block.TxOut, bytes.Trim(txHash, "\x00"))
 	}
 
 	return block, nil

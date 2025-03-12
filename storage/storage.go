@@ -2,7 +2,6 @@ package storage
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/patiee/pow/model"
 )
@@ -10,14 +9,12 @@ import (
 type Storage struct {
 	block       *KVStorage
 	transaction *KVStorage
-	wallet      *KVStorage
 }
 
 func NewStorage(path string) *Storage {
 	return &Storage{
 		block:       New("block", path),
 		transaction: New("tx", path),
-		wallet:      New("wallet", path),
 	}
 }
 
@@ -53,23 +50,4 @@ func (s *Storage) GetTransaction(hash []byte) (*model.Transaction, error) {
 		return nil, fmt.Errorf("could not deserialize transaction: %v", err)
 	}
 	return model.DeserializeTransaction(transactionBytes)
-}
-
-func (s *Storage) SetWallet(wallet []byte, value *big.Int) error {
-	valueBytes := value.Bytes()
-	err := s.wallet.Update(wallet, valueBytes)
-	if err != nil {
-		return s.wallet.Set(wallet, valueBytes)
-	}
-
-	return nil
-}
-
-func (s *Storage) GetWallet(wallet []byte) (*big.Int, error) {
-	valueBytes, err := s.wallet.Get(wallet)
-	if err != nil {
-		return nil, err
-	}
-
-	return new(big.Int).SetBytes(valueBytes), nil
 }

@@ -13,5 +13,6 @@ message Block {
   int64 nonce = 4;
   string difficulty = 5;
   bytes merkle_root = 6;
-  repeated bytes transactions = 7;
+  repeated bytes txIn = 7;
+  repeated bytes txOut = 8;
 }
