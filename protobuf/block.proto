@@ -1,0 +1,15 @@
+syntax = "proto3";
+// package model;
+
+import "gogoproto/gogo.proto"; 
+
+option go_package = "github.com/patiee/pow/model";
+
+
+message Block {
+  int64 height = 1;
+  int64 timestamp = 2;
+  string previous_hash = 3;
+  int64 nonce = 4;
+  string difficulty = 5;
+}
