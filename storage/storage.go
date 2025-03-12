@@ -1,114 +1,38 @@
 package storage
 
 import (
-	"encoding/binary"
 	"fmt"
-	"io"
-	"os"
+
+	"github.com/patiee/pow/model"
 )
 
-type KVStorage struct {
-	name string
+type Storage struct {
+	block       *KVStorage
+	transaction *KVStorage
+	wallet      *KVStorage
 }
 
-func New(name string) *KVStorage {
-	return &KVStorage{
-		name: name,
+func NewStorage(path string) *Storage {
+	return &Storage{
+		block:       New("block", path),
+		transaction: New("tx", path),
+		wallet:      New("wallet", path),
 	}
 }
 
-// Set a new value by key in storage
-func (kv *KVStorage) Set(key string, value []byte) error {
-	// Open the file for appending
-	file, err := os.OpenFile(kv.name, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0644)
+func (s *Storage) AddBlock(block *model.Block) error {
+	blockBytes, err := block.Serialize()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not serialize block: %v", err)
 	}
-	defer file.Close()
-
-	if err := setKey(file, key); err != nil {
-		return err
-	}
-	if err := setValue(file, value); err != nil {
-		return err
-	}
-
-	return nil
+	blockHash := block.Hash()
+	return s.block.Set(blockHash[:], blockBytes)
 }
 
-// Get a value by key from storage
-func (kv *KVStorage) Get(key string) ([]byte, error) {
-	file, err := os.OpenFile(kv.name, os.O_RDONLY, 0644)
+func (s *Storage) GetBlock(hash []byte) (*model.Block, error) {
+	blockBytes, err := s.block.Get(hash)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not deserialize block: %v", err)
 	}
-	defer file.Close()
-
-	for {
-		storedKey, err := readKey(file)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-
-		if storedKey == key {
-			value, err := readValue(file)
-			if err != nil {
-				return nil, err
-			}
-			return value, nil
-		}
-	}
-
-	return nil, fmt.Errorf("key not found")
-}
-
-// setKey writes a string with length prefix in binary format
-func setKey(w io.Writer, s string) error {
-	if err := binary.Write(w, binary.LittleEndian, int32(len(s))); err != nil {
-		return err
-	}
-	if _, err := w.Write([]byte(s)); err != nil {
-		return err
-	}
-	return nil
-}
-
-// setValue writes a byte slice in binary format
-func setValue(w io.Writer, data []byte) error {
-	if err := binary.Write(w, binary.LittleEndian, int32(len(data))); err != nil {
-		return err
-	}
-	if _, err := w.Write(data); err != nil {
-		return err
-	}
-	return nil
-}
-
-// readKey reads a string with length prefix from binary format
-func readKey(r io.Reader) (string, error) {
-	var length int32
-	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
-		return "", err
-	}
-	data := make([]byte, length)
-	if _, err := r.Read(data); err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-// readValue reads a byte slice from binary format
-func readValue(r io.Reader) ([]byte, error) {
-	var length int32
-	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
-		return nil, err
-	}
-	data := make([]byte, length)
-	if _, err := r.Read(data); err != nil {
-		return nil, err
-	}
-	return data, nil
+	return model.DeserializeBlock(blockBytes)
 }

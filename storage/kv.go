@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -23,7 +24,7 @@ func New(name, path string) *KVStorage {
 }
 
 // Set a new value by key in storage
-func (kv *KVStorage) Set(key string, value []byte) error {
+func (kv *KVStorage) Set(key []byte, value []byte) error {
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 
@@ -34,10 +35,10 @@ func (kv *KVStorage) Set(key string, value []byte) error {
 	}
 	defer file.Close()
 
-	if err := setKey(file, key); err != nil {
+	if err := write(file, key); err != nil {
 		return err
 	}
-	if err := setValue(file, value); err != nil {
+	if err := write(file, value); err != nil {
 		return err
 	}
 
@@ -45,7 +46,7 @@ func (kv *KVStorage) Set(key string, value []byte) error {
 }
 
 // Get a value by key from storage
-func (kv *KVStorage) Get(key string) ([]byte, error) {
+func (kv *KVStorage) Get(key []byte) ([]byte, error) {
 	kv.lock.Lock()
 	defer kv.lock.Unlock()
 
@@ -56,7 +57,7 @@ func (kv *KVStorage) Get(key string) ([]byte, error) {
 	defer file.Close()
 
 	for {
-		storedKey, err := readKey(file)
+		storedKey, err := read(file)
 		if err == io.EOF {
 			break
 		}
@@ -64,8 +65,8 @@ func (kv *KVStorage) Get(key string) ([]byte, error) {
 			return nil, err
 		}
 
-		if storedKey == key {
-			value, err := readValue(file)
+		if bytes.Equal(storedKey, key) {
+			value, err := read(file)
 			if err != nil {
 				return nil, err
 			}
@@ -76,43 +77,19 @@ func (kv *KVStorage) Get(key string) ([]byte, error) {
 	return nil, fmt.Errorf("key not found")
 }
 
-// setKey writes a string with length prefix in binary format
-func setKey(w io.Writer, s string) error {
-	if err := binary.Write(w, binary.LittleEndian, int32(len(s))); err != nil {
+// write a byte slice with length prefix in binary format
+func write(w io.Writer, key []byte) error {
+	if err := binary.Write(w, binary.LittleEndian, int32(len(key))); err != nil {
 		return err
 	}
-	if _, err := w.Write([]byte(s)); err != nil {
-		return err
-	}
-	return nil
-}
-
-// setValue writes a byte slice in binary format
-func setValue(w io.Writer, data []byte) error {
-	if err := binary.Write(w, binary.LittleEndian, int32(len(data))); err != nil {
-		return err
-	}
-	if _, err := w.Write(data); err != nil {
+	if _, err := w.Write(key); err != nil {
 		return err
 	}
 	return nil
 }
 
-// readKey reads a string with length prefix from binary format
-func readKey(r io.Reader) (string, error) {
-	var length int32
-	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
-		return "", err
-	}
-	data := make([]byte, length)
-	if _, err := r.Read(data); err != nil {
-		return "", err
-	}
-	return string(data), nil
-}
-
-// readValue reads a byte slice from binary format
-func readValue(r io.Reader) ([]byte, error) {
+// read a byte slice with length prefix from binary format
+func read(r io.Reader) ([]byte, error) {
 	var length int32
 	if err := binary.Read(r, binary.LittleEndian, &length); err != nil {
 		return nil, err

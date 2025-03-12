@@ -9,10 +9,11 @@ import (
 
 func main() {
 	// Test creating a genesis block
+	previousHash := model.ZeroHash()
 	genesis := model.Block{
 		Height:       0,
 		Timestamp:    time.Now().Unix(),
-		PreviousHash: "0",
+		PreviousHash: previousHash[:],
 		Nonce:        0,
 		Difficulty:   "1",
 	}

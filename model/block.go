@@ -4,45 +4,43 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
 	"github.com/patiee/pow/config"
 )
 
-// Hash returns block hash as big number
-func (b *Block) Hash() *big.Int {
+// HashInt returns block hash as big number
+func (b *Block) HashInt() *big.Int {
 	hash := sha256.Sum256([]byte(b.String()))
 	return new(big.Int).SetBytes(hash[:])
 }
 
-// HashHex returns block hash as hex
-func (b *Block) HashHex() string {
-	hash := sha256.Sum256([]byte(b.String()))
-	return hex.EncodeToString(hash[:])
+// Hash returns block hash
+func (b *Block) Hash() Hash {
+	return sha256.Sum256([]byte(b.String()))
 }
 
 // MerkleRoot computes the Merkle root from a list of transactions
-func MerkleRoot(txs []*Transaction) string {
+func MerkleRoot(txs []*Transaction) Hash {
 	if len(txs) == 0 {
-		return ""
+		return ZeroHash()
 	}
 
-	hashes := make([]string, len(txs))
+	hashes := make([]Hash, len(txs))
 	for i, tx := range txs {
-		hashes[i] = tx.HashHex()
+		hashes[i] = tx.Hash()
 	}
 
 	for len(hashes) > 1 {
-		tempHashes := []string{}
+		if len(hashes)%2 != 0 {
+			hashes = append(hashes, hashes[len(hashes)-1])
+		}
+
+		tempHashes := make([]Hash, len(hashes)/2)
 		for i := 0; i < len(hashes); i += 2 {
-			if i+1 >= len(hashes) {
-				hashes = append(hashes, hashes[i])
-			}
-			combined := hashes[i] + hashes[i+1]
-			hash := sha256.Sum256([]byte(combined))
-			tempHashes = append(tempHashes, hex.EncodeToString(hash[:]))
+			combined := append(hashes[i][:], hashes[i+1][:]...)
+			tempHashes[i/2] = sha256.Sum256(combined)
 		}
 		hashes = tempHashes
 	}
@@ -50,8 +48,8 @@ func MerkleRoot(txs []*Transaction) string {
 	return hashes[0]
 }
 
-// SerializeBlock serializes the Block into a byte slice
-func (block *Block) SerializeBlock() ([]byte, error) {
+// Serialize the Block into a byte slice
+func (block *Block) Serialize() ([]byte, error) {
 	var buf bytes.Buffer
 
 	// Version
@@ -62,14 +60,14 @@ func (block *Block) SerializeBlock() ([]byte, error) {
 
 	// Previous Hash
 	prevHash := make([]byte, 32)
-	copy(prevHash, []byte(block.PreviousHash))
+	copy(prevHash, block.PreviousHash)
 	if err := binary.Write(&buf, binary.LittleEndian, prevHash); err != nil {
 		return nil, fmt.Errorf("failed to write previous hash: %v", err)
 	}
 
 	// Merkle Root
 	merkleRoot := make([]byte, 32)
-	copy(merkleRoot, []byte(block.MerkleRoot))
+	copy(merkleRoot, block.MerkleRoot)
 	if err := binary.Write(&buf, binary.LittleEndian, merkleRoot); err != nil {
 		return nil, fmt.Errorf("failed to write merkle root: %v", err)
 	}
@@ -116,6 +114,7 @@ func (block *Block) SerializeBlock() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// DeserializeBlock from a byte slice
 func DeserializeBlock(data []byte) (*Block, error) {
 	buf := bytes.NewReader(data)
 	block := &Block{}
@@ -128,17 +127,17 @@ func DeserializeBlock(data []byte) (*Block, error) {
 
 	// Read Previous Hash
 	prevHash := make([]byte, 32)
-	if err := binary.Read(buf, binary.LittleEndian, &prevHash); err != nil {
+	if err := binary.Read(buf, binary.LittleEndian, prevHash); err != nil {
 		return nil, fmt.Errorf("failed to read previous hash: %v", err)
 	}
-	block.PreviousHash = string(bytes.Trim(prevHash, "\x00"))
+	block.PreviousHash = prevHash
 
 	// Read Merkle Root
 	merkleRoot := make([]byte, 32)
 	if err := binary.Read(buf, binary.LittleEndian, &merkleRoot); err != nil {
 		return nil, fmt.Errorf("failed to read merkle root: %v", err)
 	}
-	block.MerkleRoot = string(bytes.Trim(merkleRoot, "\x00"))
+	block.MerkleRoot = merkleRoot
 
 	// Read Timestamp
 	var timestamp int64
@@ -197,7 +196,7 @@ func (b *Block) MineBlock() (string, error) {
 	}
 
 	for {
-		hash := b.Hash()
+		hash := b.HashInt()
 		if hash.Cmp(target) == -1 {
 			fmt.Printf("Block mined! Nonce: %d, Hash: %s\n", b.Nonce, hash)
 			return fmt.Sprintf("%x", hash), nil
