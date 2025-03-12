@@ -36,3 +36,20 @@ func (s *Storage) GetBlock(hash []byte) (*model.Block, error) {
 	}
 	return model.DeserializeBlock(blockBytes)
 }
+
+func (s *Storage) AddTransaction(transaction *model.Transaction) error {
+	blockBytes, err := transaction.Serialize()
+	if err != nil {
+		return fmt.Errorf("could not serialize block: %v", err)
+	}
+	blockHash := transaction.Hash()
+	return s.transaction.Set(blockHash[:], blockBytes)
+}
+
+func (s *Storage) GetTransaction(hash []byte) (*model.Transaction, error) {
+	transactionBytes, err := s.transaction.Get(hash)
+	if err != nil {
+		return nil, fmt.Errorf("could not deserialize transaction: %v", err)
+	}
+	return model.DeserializeTransaction(transactionBytes)
+}

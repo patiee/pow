@@ -4,8 +4,9 @@ option go_package = "github.com/patiee/pow/model";
 
 message Transaction {
 	int64 idx = 1;
-	string sender = 2;
-	string receiver = 3;
+	bytes sender = 2;
+	bytes receiver = 3;
 	string amount = 4;
 	bytes signature = 5;
+	int64 nonce = 6;
 }

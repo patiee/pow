@@ -73,8 +73,7 @@ func (block *Block) Serialize() ([]byte, error) {
 	}
 
 	// Timestamp
-	timestamp := int64(block.Timestamp)
-	if err := binary.Write(&buf, binary.LittleEndian, timestamp); err != nil {
+	if err := binary.Write(&buf, binary.LittleEndian, block.Timestamp); err != nil {
 		return nil, fmt.Errorf("failed to write timestamp: %v", err)
 	}
 
@@ -96,8 +95,7 @@ func (block *Block) Serialize() ([]byte, error) {
 	}
 
 	// Nonce
-	nonce := int64(block.Nonce)
-	if err := binary.Write(&buf, binary.LittleEndian, nonce); err != nil {
+	if err := binary.Write(&buf, binary.LittleEndian, block.Nonce); err != nil {
 		return nil, fmt.Errorf("failed to write nonce: %v", err)
 	}
 
