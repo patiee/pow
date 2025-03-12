@@ -1,7 +1,9 @@
 syntax = "proto3";
 // package model;
 
-import "gogoproto/gogo.proto"; 
+// import "gogoproto/gogo.proto"; 
+
+import "transaction.proto"; 
 
 option go_package = "github.com/patiee/pow/model";
 
@@ -12,4 +14,6 @@ message Block {
   string previous_hash = 3;
   int64 nonce = 4;
   string difficulty = 5;
+  string merkle_root = 6;
+  repeated Transaction transactions = 7;
 }

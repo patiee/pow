@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option go_package = "github.com/patiee/pow/model";
+
+message Transaction {
+	string sender = 1;
+	string receiver = 2;
+	string amount = 3;
+	bytes signature = 4;
+}

@@ -11,4 +11,4 @@ proto-gen:
 	    --go_out=$(PROTO_OUT_DIR) \
 	    --go_opt=paths=source_relative \
 		--go-grpc_out=. \
-	    $(PROTO_SRC_DIR)/block.proto
+	    $(PROTO_SRC_DIR)/block.proto $(PROTO_SRC_DIR)/transaction.proto
